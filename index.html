@@ -1,199 +1,370 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&display=swap" rel="stylesheet">
 <meta charset="UTF-8">
-<title>Typing Battle Game</title>
+<title>Typing Battle</title>
+
 <style>
 body {
- font-family: "UD Digi Kyokasho NK-R", "Yu Gothic", Arial, sans-serif;
- text-align: center;
- color: white;
- overflow:hidden;
+ font-family: Arial;
+ text-align:center;
+ color:white;
  margin:0;
- background-size: cover;
- transition: transform 0.6s ease, opacity 0.6s ease;
+ background: linear-gradient(#1e1e2f, #3a3a5f);
+ overflow:hidden;
 }
 
-.zoom { transform: scale(1.2); opacity:0; }
-.swipe { transform: translateX(-100%); opacity:0; }
+/* 🌸 Sakura */
+.petal {
+ position:fixed;
+ top:-10px;
+ width:15px;
+ height:15px;
+ background:pink;
+ border-radius:50%;
+ opacity:0.7;
+ animation:fall linear infinite;
+}
+@keyframes fall {
+ to { transform:translateY(110vh) translateX(50px); }
+}
 
-#game, #endScreen, #bossWarning { display:none; }
+/* Title */
+h1 { font-size:50px; }
 
-.bar { width: 500px; height: 25px; background: #555; margin:15px auto; }
-.hp { height:100%; background: lime; width:100%; transition: width 0.3s; }
-.lowHP { animation: flash 0.5s infinite; }
-@keyframes flash { 50% { background:red; } }
+/* Timer */
+#timer { font-size:70px; }
 
-#word { font-size: 40px; margin:20px; }
-#timer { font-size: 60px; margin:10px; }
+/* 🍣 Moving word */
+#wordContainer {
+ width:100%;
+ overflow:hidden;
+ height:80px;
+ position:relative;
+}
+#word {
+ position:absolute;
+ font-size:60px;
+ white-space:nowrap;
+ left:100%;
+ animation:slide 10s linear infinite;
+}
+@keyframes slide {
+ from { left:100%; }
+ to { left:-100%; }
+}
 
-input { font-size:25px; padding:10px; }
-button { padding:15px 25px; font-size:22px; margin:8px; }
+/* Input + buttons */
+input { font-size:30px; padding:10px; text-align:center; }
+button { font-size:25px; padding:15px; margin:10px; }
 
-#battlefield { display:flex; justify-content:space-around; margin-top:30px; }
-.character { width:180px; height:180px; }
+/* Avatar select */
+.select img {
+ width:120px;
+ cursor:pointer;
+ border:4px solid transparent;
+ border-radius:10px;
+}
+.selected {
+ border:4px solid yellow;
+ transform:scale(1.1);
+}
 
-.idle { animation: float 1s infinite alternate; }
-@keyframes float { from{transform:translateY(0);} to{transform:translateY(-15px);} }
+/* HP */
+.bar { width:500px; height:25px; background:#555; margin:10px auto; }
+.hp { height:100%; background:lime; }
 
-/* BIG FEEDBACK TEXT */
+/* Characters */
+.charBox {
+ display:flex;
+ justify-content:space-around;
+ margin:20px;
+}
+.char {
+ width:150px;
+ transition:0.2s;
+}
+
+/* Attack */
+.attack { transform:scale(1.5); }
+
+/* Hit */
+.hit {
+ animation:hit 0.3s;
+}
+@keyframes hit {
+ 25%{ transform:translateX(-10px);}
+ 50%{ transform:translateX(10px);}
+}
+
+/* Shake */
+.shake { animation:shake 0.2s infinite; }
+@keyframes shake {
+ 50%{ transform:translate(-3px,-3px);}
+}
+
+/* 🎉 TEXT */
 #bigText {
  position:fixed;
- top:40%; left:50%;
+ top:40%;
+ left:50%;
  transform:translate(-50%,-50%) scale(0.5);
- font-size:80px;
+ font-size:90px;
  font-weight:bold;
  opacity:0;
- transition: all 0.4s ease;
+ pointer-events:none;
 }
-.showText {
- opacity:1;
- transform:translate(-50%,-50%) scale(1.2);
+.show {
+ animation:pop 0.6s ease;
+}
+@keyframes pop {
+ 0% { transform:translate(-50%,-50%) scale(0.3); opacity:0; }
+ 50% { transform:translate(-50%,-50%) scale(1.4); opacity:1; }
+ 100% { transform:translate(-50%,-50%) scale(1); opacity:0; }
 }
 
-.shake { animation: shake 0.2s infinite; }
-@keyframes shake {
-0%{transform:translate(3px,3px);} 25%{transform:translate(-3px,3px);} 50%{transform:translate(3px,-3px);} 75%{transform:translate(-3px,-3px);} }
-
-.avatar-option { width:100px; cursor:pointer; border:3px solid transparent; }
-.selected { border-color: yellow; }
-
-#bossWarning {
- position:fixed;
- top:0; left:0;
- width:100%; height:100%;
- background:black;
- color:red;
- font-size:60px;
- display:flex;
- justify-content:center;
- align-items:center;
- z-index:10;
-}
+/* Screens */
+#game, #end { display:none; }
 </style>
 </head>
+
 <body>
 
-<h1 style="font-size:50px;">Typing Battle</h1>
-
-<div id="bigText"></div>
-<audio id="bgm"></audio>
+<h1>Typing Battle 🌸</h1>
 
 <div id="setup">
-<input id="nickname" placeholder="Your name"><br>
+<input id="name" placeholder="Your name"><br>
+
 <select id="difficulty">
 <option value="1">Easy</option>
 <option value="2">Normal</option>
 <option value="3">Hard</option>
-</select><br>
-<img src="https://cdn-icons-png.flaticon.com/512/194/194938.png" class="avatar-option" data-src="https://cdn-icons-png.flaticon.com/512/194/194938.png">
-<img src="https://cdn-icons-png.flaticon.com/512/4140/4140048.png" class="avatar-option" data-src="https://cdn-icons-png.flaticon.com/512/4140/4140048.png">
-<img src="https://cdn-icons-png.flaticon.com/512/2922/2922510.png" class="avatar-option" data-src="https://cdn-icons-png.flaticon.com/512/2922/2922510.png"><br>
-<button id="startBtn">Start Game</button>
+</select>
+
+<h3>Choose your character</h3>
+<div class="select">
+<img src="https://cdn-icons-png.flaticon.com/512/616/616430.png" onclick="chooseChar('cat',this)">
+<img src="https://cdn-icons-png.flaticon.com/512/616/616408.png" onclick="chooseChar('dog',this)">
 </div>
 
-<div id="bossWarning">⚠️ BOSS STAGE ⚠️</div>
+<button onclick="startGame()">Start Game</button>
+</div>
 
 <div id="game">
 <h2 id="playerName"></h2>
-<div id="battlefield">
-<img id="playerChar" class="character idle">
-<img id="enemyChar" class="character idle">
+
+<div class="charBox">
+<img id="playerChar" class="char">
+<img id="enemyChar" class="char">
 </div>
 
 <div class="bar"><div id="playerHP" class="hp"></div></div>
 <div class="bar"><div id="enemyHP" class="hp"></div></div>
 
 <div id="timer">10</div>
+
+<div id="wordContainer">
 <div id="word"></div>
-<input id="input">
-<div id="feedback"></div>
 </div>
 
-<div id="endScreen">
-<h2 style="font-size:40px;">Leaderboard</h2>
-<ol id="leaderboard"></ol>
-<button onclick="restartSame()">Play Again</button>
-<button onclick="resetGame()">Change Name/Avatar</button>
+<input id="input">
 </div>
+
+<div id="end">
+<h2>Leaderboard</h2>
+<ol id="board"></ol>
+<button onclick="startGame()">Play Again</button>
+<button onclick="location.reload()">Change Name</button>
+</div>
+
+<div id="bigText"></div>
+
+<!-- sounds -->
+<audio id="bgm" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8b5c6c7e5.mp3" loop></audio>
+<audio id="miss" src="https://cdn.pixabay.com/download/audio/2022/03/10/audio_2.mp3"></audio>
+<audio id="meow" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_cat_meow.mp3"></audio>
+<audio id="bark" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_dog_bark.mp3"></audio>
 
 <script>
-const backgrounds=[
-"https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1600&auto=format&fit=crop",
-"https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1600&auto=format&fit=crop",
-"https://images.unsplash.com/photo-1520975922284-9e0fbead0d1b?q=80&w=1600&auto=format&fit=crop"];
+const words = [
+ {jp:"kantan", en:"easy"},
+ {jp:"muzukashii", en:"difficult"},
+ {jp:"aka", en:"red"},
+ {jp:"getsuyobi", en:"monday"},
+ {jp:"kayobi", en:"tuesday"},
+ {jp:"suiyobi", en:"wednesday"},
+ {jp:"mokuyobi", en:"thursday"},
+ {jp:"kinyobi", en:"friday"},
+ {jp:"doyobi", en:"saturday"},
+ {jp:"nichiyobi", en:"sunday"}
+];
 
-const enemies=[
-"https://cdn-icons-png.flaticon.com/512/616/616408.png",
-"https://cdn-icons-png.flaticon.com/512/616/616430.png",
-"https://cdn-icons-png.flaticon.com/512/616/616494.png"];
+let playerType="", playerHP, enemyHP, current, timer, timeLeft, startTime, difficulty;
 
-const music=[
-"https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8b5c6c7e5.mp3",
-"https://cdn.pixabay.com/download/audio/2022/10/30/audio_946f0b6d9c.mp3",
-"https://cdn.pixabay.com/download/audio/2023/03/28/audio_7e7c4bcd59.mp3"];
+/* WRONG MESSAGE SYSTEM */
+const wrongMessages = [
+ "OH NO!",
+ "NICE TRY!",
+ "ALMOST!",
+ "TRY AGAIN!",
+ "DON’T GIVE UP!"
+];
+let wrongPool = [...wrongMessages];
 
-const words=[{jp:"kantan",en:"easy"},{jp:"muzukashii",en:"difficult"},{jp:"aka",en:"red"},{jp:"getsuyobi",en:"monday"},{jp:"kayobi",en:"tuesday"},{jp:"suiyobi",en:"wednesday"},{jp:"mokuyobi",en:"thursday"},{jp:"kinyobi",en:"friday"},{jp:"doyobi",en:"saturday"},{jp:"nichiyobi",en:"sunday"}];
+function showWrongText(){
+ if(wrongPool.length===0) wrongPool=[...wrongMessages];
 
-let playerHP,enemyHP,current,timer,timeLeft,roundCount=0,startTime;
-let selectedAvatar="";
-let difficulty=1;
+ const index=Math.floor(Math.random()*wrongPool.length);
+ const msg=wrongPool[index];
+ wrongPool.splice(index,1);
 
-const bigText=document.getElementById('bigText');
+ const colors=["#ff4d4d","#ff944d","#ffd24d","#ff66ff"];
 
-function showBig(text){
- bigText.textContent=text;
- bigText.classList.add('showText');
- setTimeout(()=>bigText.classList.remove('showText'),600);
+ const t=document.getElementById("bigText");
+ t.textContent=msg;
+ t.style.color=colors[Math.floor(Math.random()*colors.length)];
+
+ t.classList.remove("show");
+ void t.offsetWidth;
+ t.classList.add("show");
 }
 
-function changeStage(){
- let stage=0;
- if(roundCount>3) stage=1;
- if(roundCount>6) stage=2;
+/* PRAISE */
+function showText(){
+ const praises=["GOOD JOB!","EXCELLENT!","KEEP GOING!","AMAZING!","NICE!"];
+ const colors=["#4dff88","#4dd2ff","#ffd24d","#ff66ff"];
 
- document.body.style.background=`url(${backgrounds[stage]}) center/cover`;
- document.getElementById('enemyChar').src=enemies[stage];
- bgm.src=music[stage]; bgm.play();
+ const t=document.getElementById("bigText");
+ t.textContent=praises[Math.floor(Math.random()*praises.length)];
+ t.style.color=colors[Math.floor(Math.random()*colors.length)];
 
- if(stage===2 && roundCount===7){
- document.getElementById('bossWarning').style.display='flex';
- setTimeout(()=>document.getElementById('bossWarning').style.display='none',2000);
+ t.classList.remove("show");
+ void t.offsetWidth;
+ t.classList.add("show");
+}
+
+function chooseChar(type, el){
+ playerType=type;
+ document.querySelectorAll(".select img").forEach(i=>i.classList.remove("selected"));
+ el.classList.add("selected");
+}
+
+function startGame(){
+ if(!playerType) return alert("Choose character!");
+
+ playerHP=100; enemyHP=100;
+ difficulty=parseInt(document.getElementById("difficulty").value);
+
+ document.getElementById("setup").style.display="none";
+ document.getElementById("game").style.display="block";
+
+ document.getElementById("playerName").textContent =
+ document.getElementById("name").value || "Player";
+
+ const p=document.getElementById("playerChar");
+ const e=document.getElementById("enemyChar");
+
+ if(playerType==="cat"){
+  p.src="https://cdn-icons-png.flaticon.com/512/616/616430.png";
+  e.src="https://cdn-icons-png.flaticon.com/512/616/616408.png";
+ } else {
+  p.src="https://cdn-icons-png.flaticon.com/512/616/616408.png";
+  e.src="https://cdn-icons-png.flaticon.com/512/616/616430.png";
  }
+
+ startTime=Date.now();
+ nextWord();
+ startTimer();
+ updateHP();
 }
+
+function nextWord(){
+ current = words[Math.floor(Math.random()*words.length)];
+ const w=document.getElementById("word");
+ w.style.animation="none";
+ void w.offsetWidth;
+ w.textContent=current.jp;
+ w.style.animation="slide 10s linear infinite";
+ document.getElementById("input").value="";
+}
+
+function startTimer(){
+ clearInterval(timer);
+ timeLeft=10;
+ document.getElementById("timer").textContent=timeLeft;
+
+ timer=setInterval(()=>{
+  timeLeft--;
+  document.getElementById("timer").textContent=timeLeft;
+
+  if(timeLeft<=3) document.body.classList.add("shake");
+  else document.body.classList.remove("shake");
+
+  if(timeLeft<=0) wrong();
+ },1000);
+}
+
+document.getElementById("input").addEventListener("keydown",e=>{
+ if(e.key==="Enter"){
+  if(e.target.value.toLowerCase()===current.en) correct();
+  else wrong();
+ }
+});
 
 function correct(){
- let speedBonus = timeLeft>7 ? 5 : 0;
- enemyHP -= (10 + speedBonus) * difficulty;
- showBig(speedBonus?"CRITICAL HIT!":"GREAT!");
+ enemyHP-=10*difficulty;
+ showText();
+
+ if(playerType==="cat") document.getElementById("meow").play();
+ else document.getElementById("bark").play();
+
+ animate("playerChar","enemyChar");
  nextRound();
 }
 
 function wrong(){
- playerHP -= 8 * difficulty;
- showBig("OOPS!");
+ playerHP-=8*difficulty;
+ document.getElementById("miss").play();
+ showWrongText();
+ animate("enemyChar","playerChar");
  nextRound();
 }
 
-function updateHP(){
- let p=document.getElementById('playerHP');
- let e=document.getElementById('enemyHP');
- p.style.width=playerHP+'%';
- e.style.width=enemyHP+'%';
- if(playerHP<30) p.classList.add('lowHP'); else p.classList.remove('lowHP');
- if(enemyHP<30) e.classList.add('lowHP'); else e.classList.remove('lowHP');
+function animate(a,t){
+ document.getElementById(a).classList.add("attack");
+ document.getElementById(t).classList.add("hit");
+ setTimeout(()=>{
+  document.getElementById(a).classList.remove("attack");
+  document.getElementById(t).classList.remove("hit");
+ },300);
 }
 
 function nextRound(){
- roundCount++;
- changeStage();
- updateHP(); clearInterval(timer);
+ clearInterval(timer);
+ updateHP();
  if(playerHP<=0||enemyHP<=0) endGame();
- else{ nextWord(); startTimer(); }
+ else { nextWord(); startTimer(); }
 }
 
-// (rest remains same but included)
+function updateHP(){
+ document.getElementById("playerHP").style.width=playerHP+"%";
+ document.getElementById("enemyHP").style.width=enemyHP+"%";
+}
+
+function endGame(){
+ document.getElementById("game").style.display="none";
+ document.getElementById("end").style.display="block";
+}
+
+/* 🌸 petals */
+for(let i=0;i<20;i++){
+ let p=document.createElement("div");
+ p.className="petal";
+ p.style.left=Math.random()*100+"vw";
+ p.style.animationDuration=(5+Math.random()*5)+"s";
+ document.body.appendChild(p);
+}
 </script>
+
 </body>
 </html>
